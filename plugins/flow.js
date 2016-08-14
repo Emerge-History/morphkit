@@ -26,3 +26,5 @@ function log(env, ctx, next) {
     //TODO: add logging support
     next();
 }
+
+VERB("default", "end", end);

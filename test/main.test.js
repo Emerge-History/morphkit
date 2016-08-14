@@ -4,6 +4,7 @@ var engine = require('../lib/engine.js');
 
 
 var httpRoot = require('../roots/http.js');
+var places = require('../plugins/flow.js');
 var places = require('../plugins/via.js');
 
 config.init("../configs", true);

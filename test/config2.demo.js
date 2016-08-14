@@ -1,2 +1,2 @@
 http()
-    .expandVia()
+    .end().expandVia()
