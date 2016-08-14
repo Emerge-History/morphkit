@@ -1,5 +1,13 @@
 //flow control series
 
+function genericFunction(env, ctx, next) {
+    //boss
+    var func = this[0] || function() {}
+    return next(
+        func(ctx, env)
+    );
+}
+
 function passOn(env, ctx, next) {
     //note: this is a very special verb
     //it overrides default logic of the engine
@@ -30,3 +38,4 @@ function log(env, ctx, next) {
 VERB("default", "end", end);
 VERB("default", "error", error);
 VERB("default", "passOn", passOn);
+VERB("default", "func", genericFunction);
