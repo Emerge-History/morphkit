@@ -1,9 +1,15 @@
 const log4js = require('log4js');
 var logger = log4js.getLogger("morphkit::dummyAction");
 
-function dummyAction(env, context, next) {
-    logger.debug("calling dummy step");
+function dummyA(env, context, next) {
+    logger.trace("calling Dummy A");
+    next(REJECT); //reject
+}
+
+function dummyB(env, context, next) {
+    logger.trace("calling Dummy B");
     next();
 }
 
-VERB("test", "dummy", dummyAction);
+VERB("test", "dummyA", dummyA);
+VERB("test", "dummyB", dummyB);
