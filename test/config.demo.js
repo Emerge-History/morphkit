@@ -1,5 +1,5 @@
 test()
-    .dummyA(12)
+    .dummyA(-1)
 
 test("test2")
-    .dummyA(35).dummyB().dummyA()
+    .dummyA(35).dummyB().dummyA(10);

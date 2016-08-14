@@ -3,11 +3,12 @@ var logger = log4js.getLogger("morphkit::dummyAction");
 
 function dummyA(env, context, next) {
     logger.trace("calling Dummy A");
-    next(REJECT); //reject
+    next(this[0] > 0 ? undefined : REJECT); //reject
 }
 
 function dummyB(env, context, next) {
     logger.trace("calling Dummy B");
+    throw new Error();
     next();
 }
 
