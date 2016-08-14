@@ -6,8 +6,8 @@ require('./root.test.js');
 require('./plugin.test.js');
 
 var result = parser.compile(getf("config.demo.js"));
-console.log("Built:");
-console.log(result);
+// console.log("Built:");
+// console.log(result);
 
 console.log("Trying to run");
 engine.run({}, result, function(result, e) {
