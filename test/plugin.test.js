@@ -8,9 +8,10 @@ function dummyA(env, context, next) {
 
 function dummyB(env, context, next) {
     logger.trace("calling Dummy B");
-    throw new Error();
     next();
+
 }
+
 
 VERB("test", "dummyA", dummyA);
 VERB("test", "dummyB", dummyB);
