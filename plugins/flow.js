@@ -28,3 +28,5 @@ function log(env, ctx, next) {
 }
 
 VERB("default", "end", end);
+VERB("default", "error", error);
+VERB("default", "passOn", passOn);
