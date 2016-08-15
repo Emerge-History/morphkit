@@ -4,14 +4,16 @@ var engine = require('../lib/engine.js');
 
 
 var httpRoot = require('../roots/http.js');
-var places = require('../plugins/flow.js');
-var places = require('../plugins/via.js');
+
+require('./root.test.js');
+require('./plugin.test.js');
+require('../plugins/subconfig.js');
+require('../plugins/flow.js');
+require('../plugins/via.js');
 
 config.init("../configs", true);
 
 
-require('./root.test.js');
-require('./plugin.test.js');
 
 var result = parser.compile(getf("config2.demo.js"));
 // console.log("Built:");

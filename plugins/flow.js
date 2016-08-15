@@ -1,10 +1,26 @@
 //flow control series
 
+//set var to env
+function set(env, ctx, next) {
+    if (this[0]) {
+        for (var i in this[0]) {
+            if (this[0].hasOwnProperty(i)) {
+                if(typeof this[0][i] == "function") {
+                    env[i] = eval("(" + this[0][i].toString() + ")()"); //env / ctx made available
+                } else {
+                    env[i] = this[0][i];
+                }
+            }
+        }
+    }
+    next();
+}
+
 function genericFunction(env, ctx, next) {
     //boss
-    var func = this[0] || function() {}
+    var func = this[0] || function () { }
     return next(
-        func(ctx, env)
+        eval("(" + this[0].toString() + ")()") //env / ctx made available
     );
 }
 
@@ -36,6 +52,8 @@ function log(env, ctx, next) {
 }
 
 VERB("default", "end", end);
+VERB("default", "terminate", end);
 VERB("default", "error", error);
 VERB("default", "passOn", passOn);
+VERB("default", "set", set);
 VERB("default", "func", genericFunction);

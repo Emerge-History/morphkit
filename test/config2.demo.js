@@ -1,3 +1,3 @@
 http()
     // .error()
-    .expandVia()
+    .via()

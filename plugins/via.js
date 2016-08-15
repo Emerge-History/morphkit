@@ -6,36 +6,58 @@ var logger = log4js.getLogger("morphkit::plugins::via");
 
 //calls up sub config sections
 
-function expandVia(env, context, next) {
-    /**
-     * 
-     *  http.via({
-     *      key: "via",
-     *      default: "your_config"
-     *  })
-     * 
-     *  http.via()
-     * 
-     *  http.via({})
-     * 
-     */
-    var _defaultConfig = (this[0] && this[0].default) ? this[0].default.toLowerCase() : undefined;
+// function expandVia(env, context, next) {
+//     /**
+//      * 
+//      *  http.via({
+//      *      key: "via",
+//      *      default: "your_config"
+//      *  })
+//      * 
+//      *  http.via()
+//      * 
+//      *  http.via({})
+//      * 
+//      */
+//     var _defaultConfig = (this[0] && this[0].default) ? this[0].default.toLowerCase() : undefined;
+//     var _headerkey = (this[0] && this[0].key) ? this[0].key.toLowerCase() : "via";
+//     var via = context.req.headers[_headerkey];
+//     if(!via) {
+//         return next(REJECT); //failed
+//     }
+//     else {
+//         via = via.toLowerCase();
+//         var conf = config.get(via) || config.get(_defaultConfig);
+//         console.log(conf);
+//         if(conf) {
+//             engine.run(context, conf, next);
+//         } else {
+//             //not found
+//             return next(REJECT);
+//         }
+//     }
+// }
+
+// VERB("http", "expandVia", expandVia);
+
+//inline function would be enough
+function via() {
+    var _defaultConfig = (this[0] && this[0].default) ? this[0].default.toLowerCase() : "";
     var _headerkey = (this[0] && this[0].key) ? this[0].key.toLowerCase() : "via";
-    var via = context.req.headers[_headerkey];
-    if(!via) {
-        return next(REJECT); //failed
-    }
-    else {
-        via = via.toLowerCase();
-        var conf = config.get(via) || config.get(_defaultConfig);
-        console.log(conf);
-        if(conf) {
-            engine.run(context, conf, next);
-        } else {
-            //not found
-            return next(REJECT);
-        }
-    }
+    return `
+        func(()=>{
+            env._via = ctx.req.headers["${_headerkey}"]
+            if(!env._via) return REJECT;
+        })
+        .hasconfig({
+            var: "_via",
+            default: "${_defaultConfig}"
+        })
+        .sub({
+            var: "_via",
+            default: "${_defaultConfig}"
+        })
+    `;
 }
 
-VERB("http", "expandVia", expandVia);
+INLINE("http", "via", via)
