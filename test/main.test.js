@@ -14,7 +14,6 @@ require('../plugins/via.js');
 config.init("../configs", true);
 
 
-
 var result = parser.compile(getf("config2.demo.js"));
 // console.log("Built:");
 // console.log(result);
