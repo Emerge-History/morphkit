@@ -55,6 +55,23 @@ function handler(req, res) {
         ended: false
     };
 
+    function _write_downstream() {
+        events.emit("upstream", {}, () => {
+            //emit as we might want middlewares to operate upstream.res
+            ctx.upstream.res_header = ctx.upstream.res_header || ctx.upstream.res.headers;
+            ctx.upstream.res_status = ctx.upstream.res_status || ctx.upstream.res.statusCode;
+            writeHeader(ctx, ctx.upstream.res_header);
+            writeStatusCode(ctx, ctx.upstream.res_status);
+            if (ctx.upstream.res_write_buffer) {
+                res.end(ctx.upstream.res_write_buffer);
+            } else {
+                //flow through as-is
+                (ctx.upstream.res_write_stream || ctx.upstream.res).pipe(res);
+            }
+            ctx.ended = true; //EOF
+        });
+    }
+
     //fluid generator adapts to different phases of upstream req <-> res process
     function fluidGenerator() {
         //phase 0
@@ -69,22 +86,19 @@ function handler(req, res) {
             //do traffic hook
             ctx.upstream.req.on('response', function (proxyRes) {
                 ctx.upstream.res = proxyRes; // got upstream server res
-                events.emit("upstream", {}, () => {
-                    //emit as we might want middlewares to operate upstream.res
-                    ctx.upstream.res_header = ctx.upstream.res_header || ctx.upstream.res.headers;
-                    ctx.upstream.res_status = ctx.upstream.res_status || ctx.upstream.res.statusCode;
-                    writeHeader(ctx, ctx.upstream.res_header);
-                    writeStatusCode(ctx, ctx.upstream.res_status);
-                    if (ctx.upstream.res_write_buffer) {
-                        res.end(ctx.upstream.res_write_buffer);
-                    } else {
-                        //flow through as-is
-                        (ctx.upstream.res_write_stream || ctx.upstream.res).pipe(res); 
-                    }
-                });
+                return _write_downstream();
             });
-            //does the request
+            //server res is not populated,
+            //means we need to do actual request
             ctx.req.pipe(ctx.upstream.req);
+            //and we're done here, as everything's done by us
+            return;
+        }
+        //res is present, means someone else already sent the request,
+        //but do we need to write-down to the client? we don't know
+        if (!ctx.ended) {
+            //work's done by us
+            return _write_downstream();
         }
     }
 
@@ -92,7 +106,8 @@ function handler(req, res) {
     var events = engine.run(ctx, conf, configPhaseCompelte);
 
     function configPhaseCompelte() {
-        //before hand complete (all passes)
+        //prior job complete (all passes)
+        
     }
 }
 
