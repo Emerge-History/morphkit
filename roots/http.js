@@ -4,12 +4,21 @@ var url = require("url");
 var async = require('async');
 var engine = require('../lib/engine');
 var config = require('../lib/config');
-var server = http.createServer(handler);
 var logger = require('log4js').getLogger('morphkit::roots::http');
+var server = http.createServer((req, res) => {
+    try {
+        handler(req, res);
+    } catch (e) {
+        //fatal, error
+        try { req.end(); } catch (e) { }
+        try { res.end(); } catch (e) { }
+        error_handler(e);
+    }
+});
 
-function writeHeaders(res, headers) {
+function writeHeader(res, headers) {
     Object.keys(headers).forEach(function (key) {
-        var header = proxyRes.headers[key];
+        var header = headers[key];
         if (header != undefined) {
             try {
                 res.setHeader(String(key).trim(), header); //something might fail here
@@ -29,32 +38,53 @@ function error_handler(e) {
     logger.error(e);
 }
 
-function handler(req, res) {
+function loopDetection(req, res) {
+    //target -> src are the same
+    if(req.headers["X-Edge-Loop-Detection"] || req.connection.remoteAddress.endsWith('127.0.0.1')) {
+        logger.fatal("Loop Detected @", req.url);
+        return true;
+    }
+    req.headers["X-Edge-Loop-Detection"] = 1;
+}
 
+function handler(req, res) {
     function proxy_error(e) {
         if (req.socket.destroyed
-            && 
-            err.code === 'ECONNRESET'
-            && 
+            &&
+            e.code === 'ECONNRESET'
+            &&
             ctx.upstream.req) {
             ctx.upstream.req.abort();
         }
+        try {
+            res.end();
+        } catch (e) {
+        }
         error_handler(e);
     }
-
+    
     req.on("error", proxy_error);
     res.on("error", proxy_error);
     req.on('aborted', function () {
-        if(!ctx.ended && ctx.upstream.req) {
+        if (!ctx.ended && ctx.upstream.req) {
             ctx.upstream.req.abort();
+            logger.fatal("ABORT", req.url);
         }
     });
-    
+
     //fixing DNAT / Redsocks
     var u = url.parse(req.url);
     if (u.host == null) {
         req.url = "http://" + req.headers.host + req.url;
         u = url.parse(req.url);
+    }
+
+    // logger.trace(req.url);
+
+    if(loopDetection(req, res)) {
+        res.writeHeader(200);
+        res.end("!Loop Detected!"); //sorry :(
+        return;
     }
 
     var options, ctx;
@@ -79,8 +109,7 @@ function handler(req, res) {
             res_write_stream: undefined, //<- provided by plugin
             res_write_buffer: undefined, //<- provided by plugin
             res_header: undefined,
-            res_status: undefined,
-            run: fluidGenerator,
+            res_status: undefined
         },
         ended: false
     };
@@ -92,11 +121,19 @@ function handler(req, res) {
             ctx.upstream.res_status = ctx.upstream.res_status || ctx.upstream.res.statusCode;
             writeHeader(ctx.res, ctx.upstream.res_header);
             writeStatusCode(ctx.res, ctx.upstream.res_status);
+            
+            logger[(
+                ctx.upstream.res_status <= 300 ?
+                'info' : (
+                    ctx.upstream.res_status <= 400 ?
+                    'warn' : 'error'
+                    )
+            )](ctx.upstream.res_status, req.url);
             if (ctx.upstream.res_write_buffer) {
-                res.end(ctx.upstream.res_write_buffer);
+                ctx.res.end(ctx.upstream.res_write_buffer);
             } else {
                 //flow through as-is
-                (ctx.upstream.res_write_stream || ctx.upstream.res).pipe(res);
+                (ctx.upstream.res_write_stream || ctx.upstream.res).pipe(ctx.res);
             }
             ctx.ended = true; //EOF
         });
@@ -108,7 +145,7 @@ function handler(req, res) {
         //phase 0
         if (!ctx.upstream.req) {
             //generate req as we got nothing
-            ctx.upstream.req = ctx.proto.request(options);
+            ctx.upstream.req = ctx.upstream.proto.request(options);
             ctx.upstream.req.on('error', proxy_error);
         }
         //phase 1
@@ -122,6 +159,7 @@ function handler(req, res) {
             });
             //server res is not populated,
             //means we need to do actual request
+            // logger.trace("REQUEST", options)
             ctx.req.pipe(ctx.upstream.req);
             //and we're done here, as everything's done by us
             return;
@@ -135,6 +173,9 @@ function handler(req, res) {
     }
 
     var conf = config.getDefault();
+    if(!conf) {
+        logger.error("Default Config Missing - Engine failure");
+    }
     var events = engine.run(ctx, conf, processor);
 }
 
@@ -150,6 +191,10 @@ function entry(env, ctx, next) {
 //entry config
 //search for via
 //via(expand_to_config)
+
+
+server.listen(8899); // for test purpose only
+
 
 ROOT("http", entry);
 ALIAS("http", "location");
