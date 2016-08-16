@@ -1,6 +1,26 @@
 var config = require("../lib/config.js");
 var engine = require("../lib/engine.js");
 
+function define() {
+    //code blocks
+    //that might be reused
+    //auto expanded though
+
+    return "";
+}
+
+function use() {
+    //a macro that inflates given code blocks
+    var old = atom_compiled_list;
+    atom_compiled_list = [];
+    if(!this[0]) {
+        return null;
+    }
+    var conf = config.tryGet(this[0]);
+    atom_compiled_list = old;
+    return conf;
+}
+
 function hasconfig(env, ctx, next) {
     var target = this[0];
     var _default = undefined;
@@ -38,3 +58,4 @@ function subconfig(env, ctx, next) {
 VERB("default", "subconfig", subconfig);
 VERB("default", "hasconfig", hasconfig);
 VERB("default", "sub", subconfig);
+MACRO("use", use);

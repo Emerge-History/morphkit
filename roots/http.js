@@ -50,8 +50,7 @@ function handler(req, res) {
         }
     });
     
-    // LMAIN.debug(isTracked(req.url) ? " ** " : "", req.url);
-    // consooe.log(req);
+    //fixing DNAT / Redsocks
     var u = url.parse(req.url);
     if (u.host == null) {
         req.url = "http://" + req.headers.host + req.url;

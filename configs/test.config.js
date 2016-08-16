@@ -1,3 +1,5 @@
+use("test2")
+
 http()
     .func((ctx, env) => 
         ctx.req.headers["demo"] ? CONTINUE : REJECT

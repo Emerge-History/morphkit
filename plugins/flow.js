@@ -1,4 +1,5 @@
-//flow control series
+//flow control & generics
+
 
 //set var to env
 function set(env, ctx, next) {
