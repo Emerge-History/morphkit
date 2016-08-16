@@ -7,7 +7,6 @@ var config = require('../lib/config');
 var server = http.createServer(handler);
 var logger = require('log4js').getLogger('morphkit::roots::http');
 
-
 function writeHeaders(res, headers) {
     Object.keys(headers).forEach(function (key) {
         var header = proxyRes.headers[key];
@@ -26,16 +25,31 @@ function writeStatusCode(res, code) {
     res.writeHeader(code);
 }
 
-
 function error_handler(e) {
     logger.error(e);
 }
 
-
 function handler(req, res) {
 
-    req.on("error", error_handler);
-    res.on("error", error_handler);
+    function proxy_error(e) {
+        if (req.socket.destroyed
+            && 
+            err.code === 'ECONNRESET'
+            && 
+            ctx.upstream.req) {
+            ctx.upstream.req.abort();
+        }
+        error_handler(e);
+    }
+
+    req.on("error", proxy_error);
+    res.on("error", proxy_error);
+    req.on('aborted', function () {
+        if(!ctx.ended && ctx.upstream.req) {
+            ctx.upstream.req.abort();
+        }
+    });
+    
     // LMAIN.debug(isTracked(req.url) ? " ** " : "", req.url);
     // consooe.log(req);
     var u = url.parse(req.url);
@@ -89,22 +103,22 @@ function handler(req, res) {
         });
     }
 
-    //fluid generator adapts to different phases of upstream req <-> res process
-    function fluidGenerator() {
+    //processor adapts to different phases of upstream req <-> res process
+    //and finishes them
+    function processor() {
         //phase 0
         if (!ctx.upstream.req) {
             //generate req as we got nothing
             ctx.upstream.req = ctx.proto.request(options);
-            ctx.upstream.req.on('error', error_handler);
+            ctx.upstream.req.on('error', proxy_error);
         }
-
         //phase 1
         if (!ctx.upstream.res) {
             //need to do req for res :)
             //do traffic hook
             ctx.upstream.req.on('response', function (proxyRes) {
                 ctx.upstream.res = proxyRes; // got upstream server res
-                ctx.upstream.res.on('error', error_handler);
+                ctx.upstream.res.on('error', proxy_error);
                 return _write_downstream();
             });
             //server res is not populated,
@@ -122,9 +136,8 @@ function handler(req, res) {
     }
 
     var conf = config.getDefault();
-    var events = engine.run(ctx, conf, fluidGenerator);
+    var events = engine.run(ctx, conf, processor);
 }
-
 
 //called by flow engine
 function entry(env, ctx, next) {
@@ -134,7 +147,6 @@ function entry(env, ctx, next) {
     //does prefix stuff
     return next(NEXT);
 }
-
 
 //entry config
 //search for via
