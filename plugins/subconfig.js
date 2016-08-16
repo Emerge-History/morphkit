@@ -5,19 +5,16 @@ function define() {
     //code blocks
     //that might be reused
     //auto expanded though
-
+    
     return "";
 }
 
 function use() {
     //a macro that inflates given code blocks
-    var old = atom_compiled_list;
-    atom_compiled_list = [];
     if(!this[0]) {
         return null;
     }
     var conf = config.tryGet(this[0]);
-    atom_compiled_list = old;
     return conf;
 }
 
