@@ -24,7 +24,7 @@ function subconfig(env, ctx, next) {
     }
     if (typeof target == "object") {
         //get stuff from env
-        target = env[target["var"]];
+        target = env[target["var"]] || target["src"];
         _default = env[target["default"]];
     }
     var n = config.get(target) || (_default ? config.get(_default) : undefined);

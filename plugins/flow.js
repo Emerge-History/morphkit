@@ -6,7 +6,7 @@ function set(env, ctx, next) {
         for (var i in this[0]) {
             if (this[0].hasOwnProperty(i)) {
                 if(typeof this[0][i] == "function") {
-                    env[i] = eval("(" + this[0][i].toString() + ")()"); //env / ctx made available
+                    env[i] = eval("(" + this[0][i].toString() + ")(env, ctx)"); //env / ctx made available
                 } else {
                     env[i] = this[0][i];
                 }
@@ -20,7 +20,7 @@ function genericFunction(env, ctx, next) {
     //boss
     var func = this[0] || function () { }
     return next(
-        eval("(" + this[0].toString() + ")()") //env / ctx made available
+        eval("(" + this[0].toString() + ")(env, ctx)") //env / ctx made available
     );
 }
 

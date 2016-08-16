@@ -1,3 +1,14 @@
+http()
+    .contenttype("...")
+    .end()
+
+
+
+http()
+    .func((ctx, env) => 
+        ctx.req.headers["demo"] ? CONTINUE : REJECT
+    )
+
 test()
     .dummyA(13)
     .set({
@@ -13,4 +24,4 @@ test()
     .dummyB(15)
 
 http()
-    .via()
+    .via("Hello")
