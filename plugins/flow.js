@@ -1,6 +1,5 @@
 //flow control & generics
 
-
 //set var to env
 function set(env, ctx, next) {
     if (this[0]) {
@@ -23,6 +22,18 @@ function genericFunction(env, ctx, next) {
     return next(
         eval("(" + this[0].toString() + ")(env, ctx)") //env / ctx made available
     );
+}
+
+function genericEvent(env, ctx, next) {
+    //boss++
+    var func = (this[1] || function(env, ctx, cb) {
+        cb();
+    });
+    var name = this[0] || "_dummy_";
+    ctx.events.on(name, (_, cb) => {
+        func(env, ctx, cb); //YES
+    });
+    return next(CONTINUE);
 }
 
 function passOn(env, ctx, next) {
@@ -55,6 +66,7 @@ function log(env, ctx, next) {
 VERB("default", "end", end);
 VERB("default", "terminate", end);
 VERB("default", "error", error);
+VERB("default", "event", event);
 VERB("default", "passOn", passOn);
 VERB("default", "set", set);
 VERB("default", "func", genericFunction);

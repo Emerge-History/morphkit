@@ -10,6 +10,7 @@ require('../plugins/subconfig.js');
 require('../plugins/http.js');
 require('../plugins/flow.js');
 require('../plugins/via.js');
+require('../plugins/sslstrip.js');
 // require('./plugin.test.js');
 
 config.init("../configs", true);

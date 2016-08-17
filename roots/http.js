@@ -31,6 +31,7 @@ function writeHeader(res, headers) {
 }
 
 function writeStatusCode(res, code) {
+    // console.log("Writing", code);
     res.writeHeader(code);
 }
 
@@ -40,14 +41,17 @@ function error_handler(e) {
 
 function loopDetection(req, res) {
     //target -> src are the same
-    if(req.headers["X-Edge-Loop-Detection"] || req.connection.remoteAddress.endsWith('127.0.0.1')) {
+    if (req.headers["loopdetection"] || req.connection.remoteAddress.endsWith('127.0.0.1')) {
         logger.fatal("Loop Detected @", req.url);
         return true;
     }
-    req.headers["X-Edge-Loop-Detection"] = 1;
+    req.headers["loopdetection"] = 1;
 }
 
+var liveConnections = {};
+
 function handler(req, res) {
+    var contrack = Date.now();
     function proxy_error(e) {
         if (req.socket.destroyed
             &&
@@ -57,19 +61,30 @@ function handler(req, res) {
             ctx.upstream.req.abort();
         }
         try {
+            delete liveConnections[contrack];
             res.end();
         } catch (e) {
         }
         error_handler(e);
     }
-    
+
     req.on("error", proxy_error);
     res.on("error", proxy_error);
     req.on('aborted', function () {
         if (!ctx.ended && ctx.upstream.req) {
             ctx.upstream.req.abort();
+            delete liveConnections[contrack];
             logger.fatal("ABORT", req.url);
         }
+    });
+
+    
+    res.on('finish', function() {
+        delete liveConnections[contrack];
+    });
+
+    res.on('close', function() {
+        delete liveConnections[contrack];
     });
 
     //fixing DNAT / Redsocks
@@ -77,15 +92,18 @@ function handler(req, res) {
     if (u.host == null) {
         req.url = "http://" + req.headers.host + req.url;
         u = url.parse(req.url);
+        req.url_parsed = u;
     }
 
-    // logger.trace(req.url);
 
-    if(loopDetection(req, res)) {
+    if (loopDetection(req, res)) {
         res.writeHeader(200);
         res.end("!Loop Detected!"); //sorry :(
+        delete liveConnections[contrack];
         return;
     }
+
+    liveConnections[contrack] = req.url.toString(); //isolates var
 
     var options, ctx;
 
@@ -96,6 +114,8 @@ function handler(req, res) {
         method: req.method,
         headers: req.headers
     };
+
+    // logger.trace(otions);
 
     ctx = {
         HTTP: 1,
@@ -115,27 +135,38 @@ function handler(req, res) {
     };
 
     function _write_downstream() {
-        events.emit("upstream", {}, () => {
+        events.emit("upstream", {}, (err) => {
             //emit as we might want middlewares to operate upstream.res
             ctx.upstream.res_header = ctx.upstream.res_header || ctx.upstream.res.headers;
             ctx.upstream.res_status = ctx.upstream.res_status || ctx.upstream.res.statusCode;
-            writeHeader(ctx.res, ctx.upstream.res_header);
-            writeStatusCode(ctx.res, ctx.upstream.res_status);
-            
             logger[(
                 ctx.upstream.res_status <= 300 ?
-                'info' : (
-                    ctx.upstream.res_status <= 400 ?
-                    'warn' : 'error'
+                    'info' : (
+                        ctx.upstream.res_status <= 400 ?
+                            'warn' : 'error'
                     )
-            )](ctx.upstream.res_status, req.url);
-            if (ctx.upstream.res_write_buffer) {
-                ctx.res.end(ctx.upstream.res_write_buffer);
-            } else {
-                //flow through as-is
-                (ctx.upstream.res_write_stream || ctx.upstream.res).pipe(ctx.res);
+            )](ctx.upstream.req.method, ctx.upstream.res_status, ctx.req.url);
+            
+            if(ctx.upstream.res_status >= 400) {
+                logger.error(options);
             }
-            ctx.ended = true; //EOF
+            events.emit(err ? "downstream_fallback": "downstream", {}, () => {
+                writeHeader(ctx.res, ctx.upstream.res_header);
+                writeStatusCode(ctx.res, ctx.upstream.res_status);
+
+                // logger.info("Head", ctx.upstream.res_header);
+                if (ctx.upstream.res_write_buffer) {
+                    logger.warn("Buffer-Resp", ctx.req.url);
+                    ctx.res.end(ctx.upstream.res_write_buffer);
+                } else {
+                    //flow through as-is
+                    logger.info("Stream-Resp", ctx.req.url);
+                    (ctx.upstream.res_write_stream || ctx.upstream.res).pipe(ctx.res);
+                    
+                }
+                ctx.ended = true; //EOF
+                events.removeAllListeners(); //cleanup
+            });
         });
     }
 
@@ -143,11 +174,15 @@ function handler(req, res) {
     //and finishes them
     function processor() {
         //phase 0
+        if (ctx.ended) {
+            return;
+        }
         if (!ctx.upstream.req) {
             //generate req as we got nothing
             ctx.upstream.req = ctx.upstream.proto.request(options);
             ctx.upstream.req.on('error', proxy_error);
         }
+        
         //phase 1
         if (!ctx.upstream.res) {
             //need to do req for res :)
@@ -173,7 +208,7 @@ function handler(req, res) {
     }
 
     var conf = config.getDefault();
-    if(!conf) {
+    if (!conf) {
         logger.error("Default Config Missing - Engine failure");
     }
     var events = engine.run(ctx, conf, processor);
@@ -198,3 +233,11 @@ server.listen(8899); // for test purpose only
 
 ROOT("http", entry);
 ALIAS("http", "location");
+
+
+setInterval(function(){
+    if(Object.keys(liveConnections).length) {
+        logger.warn("Long-Running Connections:");
+        logger.warn(liveConnections);
+    }
+}, 5000);
