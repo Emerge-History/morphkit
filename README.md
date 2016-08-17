@@ -1,2 +1,2 @@
 
-![logo - morphkit](https://raw.githubusercontent.com/Emerge/morphkit/master/logo.png)
+<img src="https://raw.githubusercontent.com/Emerge/morphkit/master/logo.png" alt="logo - morphkit" width="400">
