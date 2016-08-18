@@ -1,6 +1,14 @@
 http()
-    .sub("roubeihome")
-    .end()
+    .resheader({
+        "content-length": 
+        [false, num(lt(3000))]
+    })
+    .passon()
+
+http()
+    .strip()
+    .url(/bing.com/)
+    .sub("demo")
 
 http()
     .url(/wechat/)
@@ -8,5 +16,3 @@ http()
 
 http()
     .strip()
-    .modify(/呵呵/g, "lol")
-
