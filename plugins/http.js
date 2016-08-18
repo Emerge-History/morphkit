@@ -111,9 +111,10 @@ function headerFilter(env, ctx, next) {
 
 function res_header(env, ctx, next) {
     if (!this[0] || this.length == 0) return next();
-    ctx.events.first('upstream', (_, cb) => {
+    var _this = this;
+    ctx.events.on('upstream', (_, cb) => {
         //must be the first :)
-        if (headerMatch_common(this, ctx.upstream.res)) {
+        if (headerMatch_common(_this, ctx.upstream.res.headers)) {
             return cb();
         } else {
             return cb(new Error("Header check failed"));
@@ -281,4 +282,4 @@ VERB("http", "loadContent", loadContent);
 VERB("http", "header", headerFilter);
 VERB("http", "resheader", res_header);
 INLINE("http", "contenttype", header_match_generator("content-type", true));
-INLINE("http", "contentlength", header_match_generator("content-type", true));
+INLINE("http", "contentlength", header_match_generator("content-length", true));

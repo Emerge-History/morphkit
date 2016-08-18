@@ -136,7 +136,7 @@ function strip_inline() {
     return `
         resheader({
             "content-type": /(html|json|javascript)/,
-            "content-disposition": /^(?!.*attachment)/
+            "content-disposition": [false, /^(?!.*attachment)/]
         })
         .loadContent()
         ._strip_()

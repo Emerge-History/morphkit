@@ -49,7 +49,7 @@ function subconfig(env, ctx, next) {
         throw new Error("sub config not found:", target);
         // return next(REJECT); //not found
     }
-    engine.run(ctx, n, next);
+    engine.run(ctx, n, next, env);
 }
 
 VERB("default", "subconfig", subconfig);
