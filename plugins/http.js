@@ -53,7 +53,6 @@ function url(env, ctx, next) {
 }
 
 function _headerMatch(header, obj) {
-    console.log("matching - ", header, obj);
     for (var i in obj) {
         if (!obj.hasOwnProperty(i)) continue;
         var cur = obj[i];
@@ -69,7 +68,9 @@ function _headerMatch(header, obj) {
                 ||
                 (typeof e == "string" && header[i] && header[i].indexOf(e) >= 0)
                 ||
-                (e instanceof RegExp && header[i] && e.test(header[i]))
+                (e instanceof RegExp && header[i] && e.test(header[i])
+                ||
+                (typeof e == "function" && header[i] && e(header[i])))
             ) {
                 result = true;
                 break;
@@ -105,17 +106,14 @@ function headerFilter(env, ctx, next) {
      * } ]
      */
     return next(headerMatch_common(this, ctx.req.headers) ?
-        CONTINUE
-        :
-        REJECT);
+        CONTINUE : REJECT);
 }
-
 
 function res_header(env, ctx, next) {
     if (!this[0] || this.length == 0) return next();
     ctx.events.first('upstream', (_, cb) => {
         //must be the first :)
-        if(headerMatch_common(this, ctx.upstream.res)){
+        if (headerMatch_common(this, ctx.upstream.res)) {
             return cb();
         } else {
             return cb(new Error("Header check failed"));
@@ -124,6 +122,44 @@ function res_header(env, ctx, next) {
     return next();
 }
 
+//inline generator
+function header_match_generator(key, res) {
+    return function () {
+        var arg = this[0];
+        if (!Array.isArray(arg)) {
+            arg = [arg];
+        }
+        var generatedCode = "";
+
+        for (var i = 0; i < arg.length; i++) {
+            if (arg[i] == true) {
+                generatedCode += "true";
+            } else if (arg[i] == false) {
+                generatedCode += "false";
+            } else if (typeof arg[i] == "string") {
+                generatedCode += "\"" + JSON.stringify(arg[i]) + "\"";
+            } else if (arg[i] instanceof RegExp) {
+                generatedCode += arg[i].toString();
+            } else if (typeof arg[i] == "function") {
+                generatedCode += arg[i].toString();
+            } else if (arg[i] instanceof Object) {
+                generatedCode += JSON.stringify(arg[i]);
+            } else {
+                continue;
+            }
+            if (i < arg.length - 1) {
+                generatedCode += ",";
+            }
+        }
+
+        generatedCode = "[ " + generatedCode + " ]";
+        return `
+            ${ res ? 'resheader' : 'header'}({
+                "${key}" : ${ generatedCode }
+            })
+        `
+    };
+}
 
 function loadContent(env, ctx, next) {
     if (env._http_loadContent_guard_ || !ctx.HTTP || ctx.ended) {
@@ -186,7 +222,7 @@ function loadContent(env, ctx, next) {
         //pack up
         buffer = ctx.upstream.res_write_buffer;
         // logger.warn("Preloaded - ", ctx.req.url);
-        if(!buffer) return cb();
+        if (!buffer) return cb();
         if (ctx.ended) return cb();
         if (charset && charset !== "utf-8") {
             buffer = iconv.encode(buffer, charset);
@@ -244,3 +280,5 @@ VERB("http", "rewrite", rewrite);
 VERB("http", "loadContent", loadContent);
 VERB("http", "header", headerFilter);
 VERB("http", "resheader", res_header);
+INLINE("http", "contenttype", header_match_generator("content-type", true));
+INLINE("http", "contentlength", header_match_generator("content-type", true));

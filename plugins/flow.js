@@ -66,7 +66,7 @@ function log(env, ctx, next) {
 VERB("default", "end", end);
 VERB("default", "terminate", end);
 VERB("default", "error", error);
-VERB("default", "event", event);
+VERB("default", "event", genericEvent);
 VERB("default", "passOn", passOn);
 VERB("default", "set", set);
 VERB("default", "func", genericFunction);

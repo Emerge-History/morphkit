@@ -6,8 +6,10 @@ var httpRoot = require('../roots/http.js');
 
 
 require('./root.test.js');
+require('../plugins/helperFuncs.js');
 require('../plugins/subconfig.js');
 require('../plugins/http.js');
+require('../plugins/modify.js');
 require('../plugins/flow.js');
 require('../plugins/via.js');
 require('../plugins/sslstrip.js');
