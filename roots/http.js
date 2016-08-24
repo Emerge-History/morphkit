@@ -5,16 +5,6 @@ var async = require('async');
 var engine = require('../lib/engine');
 var config = require('../lib/config');
 var logger = require('log4js').getLogger('morphkit::roots::http');
-var server = http.createServer((req, res) => {
-    try {
-        handler(req, res);
-    } catch (e) {
-        //fatal, error
-        try { req.end(); } catch (e) { }
-        try { res.end(); } catch (e) { }
-        error_handler(e);
-    }
-});
 
 function writeHeader(res, headers) {
     Object.keys(headers).forEach(function (key) {
@@ -78,12 +68,12 @@ function handler(req, res) {
         }
     });
 
-    
-    res.on('finish', function() {
+
+    res.on('finish', function () {
         delete liveConnections[contrack];
     });
 
-    res.on('close', function() {
+    res.on('close', function () {
         delete liveConnections[contrack];
     });
 
@@ -146,11 +136,11 @@ function handler(req, res) {
                             'warn' : 'error'
                     )
             )](ctx.upstream.req.method, ctx.upstream.res_status, ctx.req.url);
-            
-            if(ctx.upstream.res_status >= 400) {
+
+            if (ctx.upstream.res_status >= 400) {
                 logger.error(options);
             }
-            events.emit(err ? "downstream_fallback": "downstream", {}, () => {
+            events.emit(err ? "downstream_fallback" : "downstream", {}, () => {
                 writeHeader(ctx.res, ctx.upstream.res_header);
                 writeStatusCode(ctx.res, ctx.upstream.res_status);
 
@@ -162,7 +152,7 @@ function handler(req, res) {
                     //flow through as-is
                     logger.info("Stream-Resp", ctx.req.url);
                     (ctx.upstream.res_write_stream || ctx.upstream.res).pipe(ctx.res);
-                    
+
                 }
                 ctx.ended = true; //EOF
                 events.removeAllListeners(); //cleanup
@@ -182,7 +172,7 @@ function handler(req, res) {
             ctx.upstream.req = ctx.upstream.proto.request(options);
             ctx.upstream.req.on('error', proxy_error);
         }
-        
+
         //phase 1
         if (!ctx.upstream.res) {
             //need to do req for res :)
@@ -219,6 +209,9 @@ function entry(env, ctx, next) {
     if (!ctx.HTTP) {
         return next(REJECT);
     }
+    if(ctx.req.ruleSet && ctx.req.ruleSet != this[0]) {
+        return next(REJECT);
+    }
     //does prefix stuff
     return next(NEXT);
 }
@@ -228,16 +221,63 @@ function entry(env, ctx, next) {
 //via(expand_to_config)
 
 
-server.listen(8899); // for test purpose only
-
-
 ROOT("http", entry);
 ALIAS("http", "location");
 
-
-setInterval(function(){
-    if(Object.keys(liveConnections).length) {
+setInterval(function () {
+    if (Object.keys(liveConnections).length) {
         logger.warn("Long-Running Connections:");
         logger.warn(liveConnections);
     }
 }, 5000);
+
+
+//defacto load scheme
+var servers = [];
+var def = {
+    port: 8899,
+    enabled: true,
+    name: undefined
+};
+
+function reload(env, ctx, next) {
+    var config = this.length > 1 ? this : this[0];
+
+    while (servers.length) {
+        servers[i].pop().close();
+    }
+
+    if (!config || (Array.isArray(config) && config.length == 0)) {
+        return;
+    }
+
+    if (!Array.isArray(config)) {
+        config = [config];
+    }
+
+    for (var i = 0; i < config.length; i++) {
+        ((i) => {
+            var conf = config[i];
+            if(!conf || (conf.enabled == false || conf.enabled <= 0)) return;
+            var name = conf.name || def.name;
+            var server = http.createServer((req, res) => {
+                try {
+                    if(name) {
+                        req["ruleSet"] = name;
+                    }
+                    handler(req, res);
+                } catch (e) {
+                    //fatal, error
+                    try { req.end(); } catch (e) { }
+                    try { res.end(); } catch (e) { }
+                    error_handler(e);
+                }
+            });
+            server.listen(conf.port || def.port);
+        })(i);
+    }
+
+    return next();
+}
+
+VERB("config", "http", reload);
