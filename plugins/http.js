@@ -299,6 +299,7 @@ VERB("http", "rewrite", rewrite);
 VERB("http", "loadContent", loadContent);
 VERB("http", "header", headerFilter);
 VERB("http", "resheader", res_header);
+VERB("http", "ua", mobileDetect);
 INLINE("http", "contenttype", header_match_generator("content-type", true));
 INLINE("http", "contentlength", header_match_generator("content-length", true));
 INLINE("http", "", header_match_generator("content-length", true));
