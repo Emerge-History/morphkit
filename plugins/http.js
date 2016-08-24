@@ -368,4 +368,3 @@ VERB("http", "setHeader", setHeader);
 VERB("http", "setStatus", setStatus);
 INLINE("http", "contenttype", header_match_generator("content-type", true));
 INLINE("http", "contentlength", header_match_generator("content-length", true));
-INLINE("http", "", header_match_generator("content-length", true));
