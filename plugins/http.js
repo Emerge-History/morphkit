@@ -71,8 +71,8 @@ function _headerMatch(header, obj) {
                 (typeof e == "string" && header[i] && header[i].indexOf(e) >= 0)
                 ||
                 (e instanceof RegExp && header[i] && e.test(header[i])
-                ||
-                (typeof e == "function" && header[i] && e(header[i])))
+                    ||
+                    (typeof e == "function" && header[i] && e(header[i])))
             ) {
                 result = true;
                 break;
@@ -125,6 +125,21 @@ function res_header(env, ctx, next) {
     return next();
 }
 
+function res_status(env, ctx, next) {
+    if (!this[0] || this.length == 0) return next();
+    ctx.events.on('upstream', (_, cb) => {
+        //must be the first :)
+        if (ctx.upstream.res.statusCode == this[0]) {
+            return cb();
+        } else if(ctx.upstream.res_status == this[0]) {
+            return cb();
+        } else {
+            return cb(new Error("Statuscode check failed"));
+        }
+    });
+    return next();
+}
+
 //inline generator
 function header_match_generator(key, res) {
     return function () {
@@ -158,7 +173,7 @@ function header_match_generator(key, res) {
         generatedCode = "[ " + generatedCode + " ]";
         return `
             ${ res ? 'resheader' : 'header'}({
-                "${key}" : ${ generatedCode }
+                "${key}" : ${generatedCode}
             })
         `
     };
@@ -166,13 +181,13 @@ function header_match_generator(key, res) {
 
 function mobileDetect(env, ctx, next) {
     //first arg must be function
-    if(!this[0]) {
-        next(ctx.req.headers['user-agent'] ? CONTINUE: REJECT);
+    if (!this[0]) {
+        next(ctx.req.headers['user-agent'] ? CONTINUE : REJECT);
     } else if (!ctx.req.headers['user-agent']) {
         next(REJECT);
     } else {
         var md = new MobileDetect(ctx.req.headers['user-agent']);
-        if(this[0](md)) {
+        if (this[0](md)) {
             next(CONTINUE);
         } else {
             next(REJECT);
@@ -294,12 +309,63 @@ function rewrite(env, ctx, next) {
     return next();
 }
 
+function setHeader(env, ctx, next) {
+    var argv = this[0];
+    if(!argv) {
+        return next();
+    }
+    ctx.events.on('upstream', (_, cb) => {
+        for(var j in argv) {
+            if(Object.hasOwnProperty(argv, j)) {
+                ctx.upstream.res_header[j] = argv[j];
+                if(argv[j] == undefined || argv[j] == null) {
+                    delete ctx.upstream.res_header[j];
+                }
+            }
+        }
+        return cb();
+    });
+    return next();
+}
+
+function setStatus(env, ctx, next) {
+    var argv = this[0];
+    if(!argv) {
+        return next();
+    }
+    ctx.events.on('upstream', (_, cb) => {
+        ctx.upstream.res_header = argv;
+        return cb();
+    });
+    return next();
+}
+
+function setWriteBuffer(env, ctx, next) {
+    var argv = this[0];
+    if(!argv) {
+        return next();
+    }
+    ctx.events.on('upstream', (_, cb) => {
+        if(argv instanceof require('stream').Stream) {
+            ctx.upstream.res_write_stream = argv;
+        } else {
+            ctx.upstream.res_write_buffer = argv;
+        }
+        return cb();
+    });
+    return next();
+}
+
 VERB("http", "url", url);
 VERB("http", "rewrite", rewrite);
 VERB("http", "loadContent", loadContent);
+VERB("http", "status", status);
 VERB("http", "header", headerFilter);
 VERB("http", "resheader", res_header);
 VERB("http", "ua", mobileDetect);
+VERB("http", "content", setWriteBuffer);
+VERB("http", "setHeader", setHeader);
+VERB("http", "setStatus", setStatus);
 INLINE("http", "contenttype", header_match_generator("content-type", true));
 INLINE("http", "contentlength", header_match_generator("content-length", true));
 INLINE("http", "", header_match_generator("content-length", true));
