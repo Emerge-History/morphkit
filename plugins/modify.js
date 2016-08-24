@@ -45,4 +45,21 @@ function modify(env, ctx, next) {
     return next();
 }
 
+function scriptInjection() {
+    var scr = "";
+    if(!Array.isArray(this[0])) {
+        this[0] = [this[0]];
+    }
+    var root = this[1] || "";
+    for(var i = 0; i < this[0]; i++) {
+        scr += `<script src="${root + "/" + this[i]}"></script>`;
+    }
+    var target = this[2] || "body";
+    scr += `</${target}>`;
+    target = "/<\\/" + target + ">/i"
+    
+    return `modify(${target}, ${scr})`
+}
+
 VERB('http', 'modify', modify);
+INLINE("http", "script", scriptInjection)
