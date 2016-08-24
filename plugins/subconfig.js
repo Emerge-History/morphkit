@@ -6,6 +6,19 @@ function define() {
     //that might be reused
     //auto expanded though
     
+    /*
+     *  () => {
+     *    load().http(). .... <-- toString
+     *  }
+     * 
+     *  `
+     *      ()=>{} <---
+     *  `
+     *   ready to 'run'
+     */
+
+    
+
     return "";
 }
 
@@ -56,3 +69,4 @@ VERB("default", "subconfig", subconfig);
 VERB("default", "hasconfig", hasconfig);
 VERB("default", "sub", subconfig);
 MACRO("use", use);
+MACRO("load", use);

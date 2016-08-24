@@ -5,6 +5,8 @@ var logger = log4js.getLogger("morphkit::plugins::http");
 var jschardet = require("jschardet");
 var charsetParser = require('charset-parser');
 var iconv = require('iconv-lite');
+var MobileDetect = require('mobile-detect');
+
 
 iconv.extendNodeEncodings();
 
@@ -162,6 +164,22 @@ function header_match_generator(key, res) {
     };
 }
 
+function mobileDetect(env, ctx, next) {
+    //first arg must be function
+    if(!this[0]) {
+        next(ctx.req.headers['user-agent'] ? CONTINUE: REJECT);
+    } else if (!ctx.req.headers['user-agent']) {
+        next(REJECT);
+    } else {
+        var md = new MobileDetect(ctx.req.headers['user-agent']);
+        if(this[0](md)) {
+            next(CONTINUE);
+        } else {
+            next(REJECT);
+        }
+    }
+}
+
 function loadContent(env, ctx, next) {
     if (env._http_loadContent_guard_ || !ctx.HTTP || ctx.ended) {
         return next();
@@ -283,3 +301,4 @@ VERB("http", "header", headerFilter);
 VERB("http", "resheader", res_header);
 INLINE("http", "contenttype", header_match_generator("content-type", true));
 INLINE("http", "contentlength", header_match_generator("content-length", true));
+INLINE("http", "", header_match_generator("content-length", true));

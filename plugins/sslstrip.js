@@ -12,7 +12,6 @@ var urlType = /https:\/\//ig;
 var urlExplicitPort = /https:\/\/([a-zA-Z0-9.]+):[0-9]+\//ig;
 
 
-
 var StrippedUrls = {}; //all urls got 302s / META
 var StrippedSites = {};
 
