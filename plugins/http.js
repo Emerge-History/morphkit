@@ -359,7 +359,7 @@ function setWriteBuffer(env, ctx, next) {
 VERB("http", "url", url);
 VERB("http", "rewrite", rewrite);
 VERB("http", "loadContent", loadContent);
-VERB("http", "status", status);
+VERB("http", "status", res_status);
 VERB("http", "header", headerFilter);
 VERB("http", "resheader", res_header);
 VERB("http", "ua", mobileDetect);

@@ -274,6 +274,7 @@ function reload() {
                 }
             });
             server.listen(conf.port || def.port);
+            logger.info("HTTP-Proxy Started at", conf.port || def.port);
         })(i);
     }
 
