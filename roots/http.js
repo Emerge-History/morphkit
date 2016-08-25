@@ -240,7 +240,7 @@ var def = {
     name: undefined
 };
 
-function reload(env, ctx, next) {
+function reload() {
     var config = this.length > 1 ? this : this[0];
 
     while (servers.length) {
@@ -277,7 +277,8 @@ function reload(env, ctx, next) {
         })(i);
     }
 
-    return next();
+    return "";
 }
 
-VERB("config", "http", reload);
+//compile time inline
+INLINE("config", "http", reload);
