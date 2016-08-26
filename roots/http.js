@@ -279,6 +279,10 @@ function reload() {
                         error_handler(e);
                     }
                 });
+                server.on('error', function(e) {
+                    logger.error("Srv-Error");
+                    logger.error(e);
+                });
                 server.listen(conf.port || def.port);
                 logger.info("HTTP-Proxy Started at", conf.port || def.port);
                 servers.push(server);
