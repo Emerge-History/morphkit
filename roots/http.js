@@ -88,7 +88,7 @@ function handler(req, res) {
 
     if (loopDetection(req, res)) {
         res.writeHeader(200);
-        res.end("!Loop Detected!"); //sorry :(
+        res.end("!Possible proxy-loop detected, please contact server admin!"); //sorry :(
         delete liveConnections[contrack];
         return;
     }
@@ -209,7 +209,7 @@ function entry(env, ctx, next) {
     if (!ctx.HTTP) {
         return next(REJECT);
     }
-    if(ctx.req.ruleSet && ctx.req.ruleSet != this[0]) {
+    if (this[0] && (!ctx.req.ruleSet || ctx.req.ruleSet != this[0])) {
         return next(REJECT);
     }
     //does prefix stuff
@@ -240,43 +240,58 @@ var def = {
     name: undefined
 };
 
+function _close_server(server, cb) {
+    logger.warn("Server Closing!");
+    server.once("close", cb);
+    server.close();
+}
+
 function reload() {
     var config = this.length > 1 ? this : this[0];
 
+    var tbc = [];
     while (servers.length) {
-        servers[i].pop().close();
+        tbc.push(_close_server.bind(null, servers.pop()));
     }
 
-    if (!config || (Array.isArray(config) && config.length == 0)) {
-        return;
-    }
-
-    if (!Array.isArray(config)) {
-        config = [config];
-    }
-
-    for (var i = 0; i < config.length; i++) {
-        ((i) => {
-            var conf = config[i];
-            if(!conf || (conf.enabled == false || conf.enabled <= 0)) return;
-            var name = conf.name || def.name;
-            var server = http.createServer((req, res) => {
-                try {
-                    if(name) {
-                        req["ruleSet"] = name;
+    var done = function () {
+        if (!config || (Array.isArray(config) && config.length == 0)) {
+            return;
+        }
+        if (!Array.isArray(config)) {
+            config = [config];
+        }
+        for (var i = 0; i < config.length; i++) {
+            ((i) => {
+                var conf = config[i];
+                if (!conf || (conf.enabled == false || conf.enabled <= 0)) return;
+                var name = conf.name || def.name;
+                var server = http.createServer((req, res) => {
+                    try {
+                        if (name) {
+                            req["ruleSet"] = name;
+                        }
+                        handler(req, res);
+                    } catch (e) {
+                        //fatal, error
+                        try { req.end(); } catch (e) { }
+                        try { res.end(); } catch (e) { }
+                        error_handler(e);
                     }
-                    handler(req, res);
-                } catch (e) {
-                    //fatal, error
-                    try { req.end(); } catch (e) { }
-                    try { res.end(); } catch (e) { }
-                    error_handler(e);
-                }
-            });
-            server.listen(conf.port || def.port);
-            logger.info("HTTP-Proxy Started at", conf.port || def.port);
-        })(i);
+                });
+                server.listen(conf.port || def.port);
+                logger.info("HTTP-Proxy Started at", conf.port || def.port);
+                servers.push(server);
+            })(i);
+        }
     }
+
+    if (tbc.length > 0) {
+        async.parallel(tbc, done);
+    } else {
+        done();
+    }
+
 
     return "";
 }

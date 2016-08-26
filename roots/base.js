@@ -4,6 +4,12 @@
 
 var config = require("../lib/config");
 
+
+function _reload_env_vars() {
+    return undefined;
+}
+
+
 function entry(env, ctx, next) {
     return next(REJECT); //everything should be done RIGHT at compile time :)
 }
@@ -26,6 +32,7 @@ function plugin() {
     for(var i = 0; i < argv.length; i++) {
         require('../plugins/' + argv[i]);
     }
+    return _reload_env_vars();
 }
 
 
@@ -35,6 +42,7 @@ function root() {
     for(var i = 0; i < argv.length; i++) {
         require('../roots/' + argv[i]);
     }
+    return _reload_env_vars();
 }
 
 ROOT("config", entry);
