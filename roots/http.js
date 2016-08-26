@@ -31,7 +31,7 @@ function error_handler(e) {
 
 function loopDetection(req, res) {
     //target -> src are the same
-    if (req.headers["loopdetection"] || req.connection.remoteAddress.endsWith('127.0.0.1')) {
+    if (req.headers["loopdetection"]) {
         logger.fatal("Loop Detected @", req.url);
         return true;
     }
@@ -135,7 +135,7 @@ function handler(req, res) {
                         ctx.upstream.res_status <= 400 ?
                             'warn' : 'error'
                     )
-            )](ctx.upstream.req.method, ctx.upstream.res_status, ctx.req.url);
+            )](ctx.req.method, ctx.upstream.res_status, ctx.req.url);
 
             if (ctx.upstream.res_status >= 400) {
                 logger.error(options);

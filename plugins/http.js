@@ -334,7 +334,7 @@ function setStatus(env, ctx, next) {
         return next();
     }
     ctx.events.on('upstream', (_, cb) => {
-        ctx.upstream.res_header = argv;
+        ctx.upstream.res_status = argv;
         return cb();
     });
     return next();
@@ -356,7 +356,16 @@ function setWriteBuffer(env, ctx, next) {
     return next();
 }
 
+function doNotForward(env, ctx, next) {
+    ctx.upstream.res = ctx.upstream.req = {};
+    ctx.upstream.res_header = [];
+    ctx.upstream.res_status = 400;
+    ctx.upstream.res_write_buffer = this[1] || undefined;
+    return next();
+}
+
 VERB("http", "url", url);
+VERB("http", "noProxy", doNotForward);
 VERB("http", "rewrite", rewrite);
 VERB("http", "loadContent", loadContent);
 VERB("http", "status", res_status);
