@@ -1,5 +1,4 @@
 root("http")
-
 plugin("http")
 plugin("modify")
 plugin("sslstrip")
@@ -14,8 +13,6 @@ config().http(
     name: "responder"
 }
 )
-
-
 
 use("server")
 
