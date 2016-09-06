@@ -121,7 +121,8 @@ function handler(req, res) {
             req_write_stream: undefined, //<- same
             req_write_buffer: undefined,
             res_header: undefined,
-            res_status: undefined
+            res_status: undefined,
+            mock_request: false
         },
         ended: false
     };
@@ -129,6 +130,9 @@ function handler(req, res) {
     function _write_upstream() {
         events.emit("populate_req", {}, (err) => {
             events.emit("req_populated", {}, (err) => {
+                if(ctx.upstream.mock_request) {
+                    return _write_downstream();
+                }
                 if (ctx.upstream.req_write_buffer) {
                     ctx.upstream.req.write(ctx.upstream.req_write_buffer);
                     ctx.upstream.req.end();

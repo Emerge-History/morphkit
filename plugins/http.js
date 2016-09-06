@@ -90,6 +90,7 @@ function _headerMatch(header, obj) {
 
 function headerMatch_common(arg, headers) {
     if (!arg || arg.length == 0) return 1;
+    if (!headers) return 0;
     if (arg.length == 1 && !Array.isArray(arg)) {
         arg = [arg];
     }
@@ -203,8 +204,8 @@ function mobileDetect(env, ctx, next) {
 function _content_stream_extractor(ctx, _stream, headers, e1, e2, saveTo_parent, saveTo_key) {
     var stream, buffer, charset;
     ctx.events.on(e1, (_, cb) => {
-        if(!headers) return cb();
-        if(!_stream) return cb();
+        if (!headers) return cb();
+        if (!_stream) return cb();
         if (typeof headers == "string") {
             headers = eval(headers);
         }
@@ -397,10 +398,15 @@ function setWriteBuffer(env, ctx, next) {
 }
 
 function doNotForward(env, ctx, next) {
-    ctx.upstream.res = ctx.upstream.req = {};
-    ctx.upstream.res_header = [];
-    ctx.upstream.res_status = this[0] || 400;
-    ctx.upstream.res_write_buffer = this[1] || undefined;
+    ctx.events.on('req_populated', (_, cb) => {
+        ctx.upstream.res = {};
+
+        ctx.upstream.mock_request = true;
+        ctx.upstream.res_header = [];
+        ctx.upstream.res_status = this[0] || 400;
+        ctx.upstream.res_write_buffer = this[1] || undefined;
+        return cb();
+    });
     return next();
 }
 

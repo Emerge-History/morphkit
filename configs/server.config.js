@@ -11,8 +11,8 @@ http("responder")
 weiboId = "0000001"
 
 http()
-    .contenttype('json')
     .url(/api.weibo.cn\/2\/groups\/allgroups/i)
+    .contenttype('json')
     .loadRequest()
     .loadContent()
     .modify((buffer) => {
