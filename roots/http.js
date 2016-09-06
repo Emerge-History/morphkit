@@ -122,15 +122,17 @@ function handler(req, res) {
             req_write_buffer: undefined,
             res_header: undefined,
             res_status: undefined,
-            mock_request: false
+            mock_request: false,
+            pass: false
         },
         ended: false
     };
 
+
     function _write_upstream() {
         events.emit("populate_req", {}, (err) => {
-            events.emit("req_populated", {}, (err) => {
-                if(ctx.upstream.mock_request) {
+            events.emit((err || ctx.upstream.pass) ? "req_populated_fallback" : "req_populated", {}, (err) => {
+                if (ctx.upstream.mock_request) {
                     return _write_downstream();
                 }
                 if (ctx.upstream.req_write_buffer) {
@@ -145,7 +147,7 @@ function handler(req, res) {
     }
 
     function _write_downstream() {
-        events.emit("upstream", {}, (err) => {
+        events.emit(ctx.upstream.pass ? "upstream_fallback" : "upstream", {}, (err) => {
             //emit as we might want middlewares to operate upstream.res
             ctx.upstream.res_header = ctx.upstream.res_header || ctx.upstream.res.headers;
             ctx.upstream.res_status = ctx.upstream.res_status || ctx.upstream.res.statusCode;
@@ -160,7 +162,7 @@ function handler(req, res) {
             if (ctx.upstream.res_status >= 400) {
                 logger.error(options);
             }
-            events.emit(err ? "downstream_fallback" : "downstream", {}, () => {
+            events.emit((err || ctx.upstream.pass) ? "downstream_fallback" : "downstream", {}, () => {
                 writeHeader(ctx.res, ctx.upstream.res_header);
                 writeStatusCode(ctx.res, ctx.upstream.res_status);
 

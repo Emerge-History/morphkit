@@ -387,6 +387,9 @@ function setWriteBuffer(env, ctx, next) {
         return next();
     }
     ctx.events.on('upstream', (_, cb) => {
+        if (typeof argv == "function") {
+            argv = argv(env, ctx);
+        }
         if (argv instanceof require('stream').Stream) {
             ctx.upstream.res_write_stream = argv;
         } else {
@@ -449,11 +452,42 @@ function log(env, ctx, next) {
     return next();
 }
 
+function bodyParser(env, ctx, next) {
+    var func = this[0] || (() => {
+        return true;
+    });
+    var tp = "";
+    if (this[1]) {
+        func = this[1];
+        tp = this[0].toString().toLowerCase();
+    }
+    ctx.events.on('populate_req', (_, cb) => {
+        try {
+            var dt = ctx.upstream.req_write_buffer;
+            if (tp == 'json' && dt) {
+                dt = JSON.parse(dt.toString('utf8'));
+            } else if (tp == 'form' && dt) {
+                dt = require('qs').parse(dt);
+            }
+            var f = func(dt, ctx.req);
+            if (!f) {
+                ctx.upstream.pass = true; //let go
+            }
+            return cb();
+        } catch (e) {
+            ctx.upstream.pass = true;
+            return cb(e);
+        }
+    });
+    return next();
+}
+
 VERB("http", "url", url);
 VERB("http", "log", log);
 VERB("http", "noProxy", doNotForward);
 VERB("http", "rewrite", rewrite);
 VERB("http", "loadRequest", loadRequest);
+VERB("http", "bodyParser", bodyParser);
 VERB("http", "loadContent", loadContent);
 VERB("http", "status", res_status);
 VERB("http", "header", headerFilter);
