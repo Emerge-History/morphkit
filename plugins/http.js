@@ -20,7 +20,7 @@ function _url_compare(arg, url) {
         }
     }
     if (typeof arg == "string") {
-        if (ctx.req.url.indexOf(arg) >= 0) {
+        if (url.indexOf(arg) >= 0) {
             return true;
         } else {
             return false;
@@ -41,7 +41,12 @@ function url(env, ctx, next) {
         return next();
     }
     if (typeof arg == "string" || arg instanceof RegExp) {
-        return _url_compare(arg, ctx.req.url) ? next() : next(REJECT);
+        if (_url_compare(arg, ctx.req.url)) {
+            return next()
+        }
+        else {
+            next(REJECT);
+        }
     }
     if (Array.isArray(arg)) {
         for (var i = 0; i < arg.length; i++) {
@@ -131,7 +136,7 @@ function res_status(env, ctx, next) {
         //must be the first :)
         if (ctx.upstream.res.statusCode == this[0]) {
             return cb();
-        } else if(ctx.upstream.res_status == this[0]) {
+        } else if (ctx.upstream.res_status == this[0]) {
             return cb();
         } else {
             return cb(new Error("Statuscode check failed"));
@@ -155,7 +160,7 @@ function header_match_generator(key, res) {
             } else if (arg[i] == false) {
                 generatedCode += "false";
             } else if (typeof arg[i] == "string") {
-                generatedCode += "\"" + JSON.stringify(arg[i]) + "\"";
+                generatedCode += JSON.stringify(arg[i]);
             } else if (arg[i] instanceof RegExp) {
                 generatedCode += arg[i].toString();
             } else if (typeof arg[i] == "function") {
@@ -311,14 +316,14 @@ function rewrite(env, ctx, next) {
 
 function setHeader(env, ctx, next) {
     var argv = this[0];
-    if(!argv) {
+    if (!argv) {
         return next();
     }
     ctx.events.on('upstream', (_, cb) => {
-        for(var j in argv) {
-            if(Object.hasOwnProperty(argv, j)) {
+        for (var j in argv) {
+            if (Object.hasOwnProperty(argv, j)) {
                 ctx.upstream.res_header[j] = argv[j];
-                if(argv[j] == undefined || argv[j] == null) {
+                if (argv[j] == undefined || argv[j] == null) {
                     delete ctx.upstream.res_header[j];
                 }
             }
@@ -330,7 +335,7 @@ function setHeader(env, ctx, next) {
 
 function setStatus(env, ctx, next) {
     var argv = this[0];
-    if(!argv) {
+    if (!argv) {
         return next();
     }
     ctx.events.on('upstream', (_, cb) => {
@@ -342,11 +347,11 @@ function setStatus(env, ctx, next) {
 
 function setWriteBuffer(env, ctx, next) {
     var argv = this[0];
-    if(!argv) {
+    if (!argv) {
         return next();
     }
     ctx.events.on('upstream', (_, cb) => {
-        if(argv instanceof require('stream').Stream) {
+        if (argv instanceof require('stream').Stream) {
             ctx.upstream.res_write_stream = argv;
         } else {
             ctx.upstream.res_write_buffer = argv;
@@ -364,7 +369,24 @@ function doNotForward(env, ctx, next) {
     return next();
 }
 
+function log(env, ctx, next) {
+    //log body here
+    ctx.events.on('upstream', (_, cb) => {
+        if (ctx.upstream.res_write_buffer) {
+            logger.trace("[body]", ctx.req.url);
+            var str = ctx.upstream.res_write_buffer.toString('utf8');
+            if(this[0] && this[0].toLowerCase() == "json") {
+                str = JSON.stringify(JSON.parse(str), null, '\t');
+            }
+            logger.trace("\n" + str);
+        }
+        return cb();
+    });
+    return next();
+}
+
 VERB("http", "url", url);
+VERB("http", "log", log);
 VERB("http", "noProxy", doNotForward);
 VERB("http", "rewrite", rewrite);
 VERB("http", "loadContent", loadContent);

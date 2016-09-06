@@ -1,11 +1,39 @@
 http("responder")
     .url(/demoUrl/i)
-    .noProxy()    
+    .noProxy()
     .setStatus(200)
     .content("helloworld")
 
 http("responder")
     .rewrite("http://qq.com")
 
+http()
+    .contenttype('json')
+    .url(/api.weibo.cn\/2\/groups\/allgroups/i)
+    .loadContent()
+    .modify((buffer) => {
+        var gapi = JSON.parse(buffer.toString('utf8'));
+        gapi.total_number++;
+        var uid = gapi.groups[0].group[0].uid;
+        gapi.groups[0].group.unshift({
+            "gid": "00000000001",
+            "uid": uid,
+            "title": "WISE-2016大会",
+            "count": 3,
+            "type": "9",
+            "settings": {
+                "remind": 1
+            },
+            "frequency": 1
+        }
+        );
+        return JSON.stringify(gapi);
+    })
+    .log('json')
+
+
+
+
 // http()
 //     .rewrite("http://baidu.com")
+

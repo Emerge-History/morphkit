@@ -69,7 +69,6 @@ function handler(req, res) {
         }
     });
 
-
     res.on('finish', function () {
         delete liveConnections[contrack];
     });

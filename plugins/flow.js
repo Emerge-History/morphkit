@@ -57,12 +57,6 @@ function error(env, ctx, next) {
     next(ERROR, err);
 }
 
-function log(env, ctx, next) {
-    //logs
-    //TODO: add logging support
-    next();
-}
-
 VERB("default", "end", end);
 VERB("default", "terminate", end);
 VERB("default", "error", error);
