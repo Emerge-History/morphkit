@@ -7,6 +7,5 @@ http("responder")
 http("responder")
     .rewrite("http://qq.com")
 
-
-http()
-    .rewrite("http://baidu.com")
+// http()
+//     .rewrite("http://baidu.com")

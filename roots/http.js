@@ -4,6 +4,7 @@ var url = require("url");
 var async = require('async');
 var engine = require('../lib/engine');
 var config = require('../lib/config');
+var enableDestroy = require('server-destroy');
 var logger = require('log4js').getLogger('morphkit::roots::http');
 
 function writeHeader(res, headers) {
@@ -242,8 +243,11 @@ var def = {
 
 function _close_server(server, cb) {
     logger.warn("Server Closing!");
-    server.once("close", cb);
-    server.close();
+    server.once("close", function () {
+        logger.info("Server Closed");
+        cb();
+    });
+    server.destroy();
 }
 
 function reload() {
@@ -279,7 +283,8 @@ function reload() {
                         error_handler(e);
                     }
                 });
-                server.on('error', function(e) {
+                enableDestroy(server);
+                server.on('error', function (e) {
                     logger.error("Srv-Error");
                     logger.error(e);
                 });

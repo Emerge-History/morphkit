@@ -8,5 +8,3 @@ http()
         <script src='http://wifi.lan/init.js'></script>
         </body>
     `)
-
-    

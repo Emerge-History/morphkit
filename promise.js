@@ -1,9 +1,6 @@
-var request = require('request');
-
-Function.prototype.promise = function () {
-    //shift one out
+function promissive() {
     var args = Array.prototype.slice.call(arguments);
-    var func = this;
+    var func = args.shift();
     return new Promise(function (res, rej) {
         var cb = function () {
             var cb_args = Array.prototype.slice.call(arguments);
@@ -30,13 +27,12 @@ function expand(func) {
     };
 }
 
-function req(url) {
-    return request.promise({
-        url: url,
-        method: "GET"
-    }).then(expand((res, body) => {
-        return body;
-    }))
+Function.prototype.promise = function () {
+    var _this = this;
+    var args = Array.prototype.slice.call(arguments);
+    args.unshift(_this);
+    return promissive.apply(null, args);
 }
 
-req("http://www.bing.com").then(console.log);
+module.exports = promissive;
+module.exports.expand = expand;
