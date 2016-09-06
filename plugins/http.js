@@ -200,26 +200,24 @@ function mobileDetect(env, ctx, next) {
     }
 }
 
-function loadContent(env, ctx, next) {
-    if (env._http_loadContent_guard_ || !ctx.HTTP || ctx.ended) {
-        return next();
-    }
-    env._http_loadContent_guard_ = 1;
-    var headers, buffer, charset;
-    ctx.events.on('upstream', (_, cb) => {
-        headers = ctx.upstream.res.headers;
-
-        if (!(/(html|json|javascript)/.test(headers["content-type"]))) {
+function _content_stream_extractor(ctx, _stream, headers, e1, e2, saveTo_parent, saveTo_key) {
+    var stream, buffer, charset;
+    ctx.events.on(e1, (_, cb) => {
+        if(typeof headers == "string") {
+            headers = eval(headers);
+        }
+        if(typeof _stream == "string") {
+            _stream = eval(_stream);
+        }
+        if (!(/(html|json|javascript|form)/.test(headers["content-type"]))) {
             return cb();
         }
         if (headers["content-disposition"] == "attachment") {
             return cb();
         }
-
-        if (ctx.ended || ctx.upstream.res_write_buffer) return cb();
-        //get stuff :p
+        if (ctx.ended || saveTo_parent[saveTo_key]) return cb();
         buffer = new Buffer(0);
-        var stream = ctx.upstream.res;
+        stream = _stream;
         if (headers['content-encoding'] == 'gzip') {
             stream = zlib.createGunzip();
         } else if (headers['content-encoding' == 'deflate']) {
@@ -245,21 +243,24 @@ function loadContent(env, ctx, next) {
             } else {
                 buffer = buffer.toString('utf8');
             }
-            ctx.upstream.res_write_buffer = buffer;
+            saveTo_parent[saveTo_key] = buffer;
             return cb();
         });
-        if (stream != ctx.upstream.res) {
+
+        if (stream != _stream) {
             stream.on('error', function (e) {
                 logger.error(e);
-                ctx.res.end();
+                // ctx.res.end(); <-- wat to do?
+                _stream.end();
                 cb();
             });
-            ctx.upstream.res.pipe(stream);
+            _stream.pipe(stream);
         }
     });
-    ctx.events.on('downstream', (_, cb) => {
+
+    ctx.events.on(e2, (_, cb) => {
         //pack up
-        buffer = ctx.upstream.res_write_buffer;
+        buffer = saveTo_parent[saveTo_key];
         // logger.warn("Preloaded - ", ctx.req.url);
         if (!buffer) return cb();
         if (ctx.ended) return cb();
@@ -277,7 +278,7 @@ function loadContent(env, ctx, next) {
             if (headers["content-length"]) {
                 headers["content-length"] = data.length;
             }
-            ctx.upstream.res_write_buffer = data;
+            saveTo_parent[saveTo_key] = data;
             return cb();
         }
 
@@ -291,6 +292,37 @@ function loadContent(env, ctx, next) {
             });
         }
     });
+}
+
+function loadRequest(env, ctx, next) {
+    if (env._http_loadRequest_guard_ || !ctx.HTTP || ctx.ended) {
+        return next();
+    }
+    env._http_loadRequest_guard_ = 1;
+    _content_stream_extractor(
+        ctx,
+        ctx.req,
+        ctx.req.headers,
+        "populate_req",
+        "req_populated",
+        ctx.upstream,
+        "req_write_buffer");
+    return next();
+}
+
+function loadContent(env, ctx, next) {
+    if (env._http_loadContent_guard_ || !ctx.HTTP || ctx.ended) {
+        return next();
+    }
+    env._http_loadContent_guard_ = 1;
+    _content_stream_extractor(
+        ctx,
+        "ctx.upstream.res",
+        "ctx.upstream.res.headers",
+        "upstream",
+        "downstream",
+        ctx.upstream,
+        "res_write_buffer");
     return next();
 }
 
@@ -375,7 +407,7 @@ function log(env, ctx, next) {
         if (ctx.upstream.res_write_buffer) {
             logger.trace("[body]", ctx.req.url);
             var str = ctx.upstream.res_write_buffer.toString('utf8');
-            if(this[0] && this[0].toLowerCase() == "json") {
+            if (this[0] && this[0].toLowerCase() == "json") {
                 str = JSON.stringify(JSON.parse(str), null, '\t');
             }
             logger.trace("\n" + str);
