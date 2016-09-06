@@ -203,13 +203,15 @@ function mobileDetect(env, ctx, next) {
 function _content_stream_extractor(ctx, _stream, headers, e1, e2, saveTo_parent, saveTo_key) {
     var stream, buffer, charset;
     ctx.events.on(e1, (_, cb) => {
-        if(typeof headers == "string") {
+        if(!headers) return cb();
+        if(!_stream) return cb();
+        if (typeof headers == "string") {
             headers = eval(headers);
         }
-        if(typeof _stream == "string") {
+        if (typeof _stream == "string") {
             _stream = eval(_stream);
         }
-        if (!(/(html|json|javascript|form)/.test(headers["content-type"]))) {
+        if (headers["content-type"] && !(/(html|json|javascript|form)/.test(headers["content-type"]))) {
             return cb();
         }
         if (headers["content-disposition"] == "attachment") {
@@ -217,6 +219,7 @@ function _content_stream_extractor(ctx, _stream, headers, e1, e2, saveTo_parent,
         }
         if (ctx.ended || saveTo_parent[saveTo_key]) return cb();
         buffer = new Buffer(0);
+
         stream = _stream;
         if (headers['content-encoding'] == 'gzip') {
             stream = zlib.createGunzip();
@@ -396,7 +399,7 @@ function setWriteBuffer(env, ctx, next) {
 function doNotForward(env, ctx, next) {
     ctx.upstream.res = ctx.upstream.req = {};
     ctx.upstream.res_header = [];
-    ctx.upstream.res_status = 400;
+    ctx.upstream.res_status = this[0] || 400;
     ctx.upstream.res_write_buffer = this[1] || undefined;
     return next();
 }
@@ -404,13 +407,36 @@ function doNotForward(env, ctx, next) {
 function log(env, ctx, next) {
     //log body here
     ctx.events.on('upstream', (_, cb) => {
-        if (ctx.upstream.res_write_buffer) {
-            logger.trace("[body]", ctx.req.url);
-            var str = ctx.upstream.res_write_buffer.toString('utf8');
-            if (this[0] && this[0].toLowerCase() == "json") {
-                str = JSON.stringify(JSON.parse(str), null, '\t');
+        try {
+            if (ctx.upstream.res_write_buffer) {
+                logger.trace("[body]", ctx.req.url);
+                var str = ctx.upstream.res_write_buffer.toString('utf8');
+                if (this[0] && this[0].toLowerCase() == "json") {
+                    str = str.prettyJSON();
+                } else if (this[0] && this[0].toLowerCase() == "form") {
+                    str = str.prettyForm();
+                }
+                logger.trace("\n" + str);
             }
-            logger.trace("\n" + str);
+        } catch (e) {
+            logger.error(e);
+        }
+        return cb();
+    });
+    ctx.events.on('populate_req', (_, cb) => {
+        try {
+            if (ctx.upstream.req_write_buffer) {
+                logger.trace("[req]", ctx.req.url);
+                var str = ctx.upstream.req_write_buffer.toString('utf8');
+                if (this[0] && this[0].toLowerCase() == "json") {
+                    str = str.prettyJSON();
+                } else if (this[0] && this[0].toLowerCase() == "form") {
+                    str = str.prettyForm();
+                }
+                logger.trace("\n" + str);
+            }
+        } catch (e) {
+            logger.error(e);
         }
         return cb();
     });
@@ -421,6 +447,7 @@ VERB("http", "url", url);
 VERB("http", "log", log);
 VERB("http", "noProxy", doNotForward);
 VERB("http", "rewrite", rewrite);
+VERB("http", "loadRequest", loadRequest);
 VERB("http", "loadContent", loadContent);
 VERB("http", "status", res_status);
 VERB("http", "header", headerFilter);

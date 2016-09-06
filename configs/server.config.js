@@ -7,16 +7,20 @@ http("responder")
 http("responder")
     .rewrite("http://qq.com")
 
+
+weiboId = "0000001"
+
 http()
     .contenttype('json')
     .url(/api.weibo.cn\/2\/groups\/allgroups/i)
+    .loadRequest()
     .loadContent()
     .modify((buffer) => {
         var gapi = JSON.parse(buffer.toString('utf8'));
         gapi.total_number++;
         var uid = gapi.groups[0].group[0].uid;
         gapi.groups[0].group.unshift({
-            "gid": "00000000001",
+            "gid": weiboId,
             "uid": uid,
             "title": "WISE-2016大会",
             "count": 3,
@@ -31,7 +35,11 @@ http()
     })
     .log('json')
 
-
+http()
+    .url(/api.weibo.cn\/2\/groups\/timeline/i)
+    .loadRequest()
+    .noProxy(200, "done")
+    .log('form')
 
 
 // http()

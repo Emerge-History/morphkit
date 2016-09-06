@@ -63,7 +63,7 @@ function handler(req, res) {
     res.on("error", proxy_error);
     req.on('aborted', function () {
         if (!ctx.ended && ctx.upstream.req) {
-            ctx.upstream.req.abort();
+            // ctx.upstream.req.abort();
             delete liveConnections[contrack];
             logger.fatal("ABORT", req.url);
         }
