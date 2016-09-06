@@ -390,8 +390,14 @@ function setWriteBuffer(env, ctx, next) {
         if (typeof argv == "function") {
             argv = argv(env, ctx);
         }
+        if (argv instanceof Error) {
+            ctx.res.end();
+            return;
+        }
         if (argv instanceof require('stream').Stream) {
             ctx.upstream.res_write_stream = argv;
+        } else if (typeof argv == "string") {
+            ctx.upstream.res_write_buffer = new Buffer(argv);
         } else {
             ctx.upstream.res_write_buffer = argv;
         }
@@ -469,7 +475,7 @@ function bodyParser(env, ctx, next) {
             } else if (tp == 'form' && dt) {
                 dt = require('qs').parse(dt);
             }
-            var f = func(dt, ctx.req);
+            var f = func(dt, ctx.req, env);
             if (!f) {
                 ctx.upstream.pass = true; //let go
             }
