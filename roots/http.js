@@ -118,11 +118,27 @@ function handler(req, res) {
             res: undefined, //<- upstream res
             res_write_stream: undefined, //<- provided by plugin
             res_write_buffer: undefined, //<- provided by plugin
+            req_write_stream: undefined, //<- same
+            req_write_buffer: undefined,
             res_header: undefined,
             res_status: undefined
         },
         ended: false
     };
+
+    function _write_upstream() {
+        events.emit("populate_req", {}, (err) => {
+            events.emit("req_populated", {}, (err) => {
+                if (ctx.upstream.req_write_buffer) {
+                    ctx.upstream.req.write(ctx.upstream.req_write_buffer);
+                    ctx.upstream.req.end();
+                } else {
+                    ctx.upstream.req_write_stream = ctx.upstream.req_write_stream || ctx.req;
+                    ctx.upstream.req_write_stream.pipe(ctx.upstream.req);
+                }
+            });
+        });
+    }
 
     function _write_downstream() {
         events.emit("upstream", {}, (err) => {
@@ -185,9 +201,10 @@ function handler(req, res) {
             //server res is not populated,
             //means we need to do actual request
             // logger.trace("REQUEST", options)
-            ctx.req.pipe(ctx.upstream.req);
+            //ctx.req.pipe(ctx.upstream.req); //<-- well this is not what we REALLY want
+
             //and we're done here, as everything's done by us
-            return;
+            return _write_upstream();
         }
         //res is present, means someone else already sent the request,
         //but do we need to write-down to the client? we don't know
