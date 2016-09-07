@@ -16,9 +16,6 @@ function define() {
      *  `
      *   ready to 'run'
      */
-
-    
-
     return "";
 }
 
@@ -28,6 +25,9 @@ function use() {
         return null;
     }
     var conf = config.tryGet(this[0]);
+    if(conf) {
+        conf.push("REF"); //1 as ref flag :)
+    }
     return conf;
 }
 
