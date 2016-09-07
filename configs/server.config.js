@@ -11,7 +11,8 @@ http()
     .url(/bing/i)
     .contenttype(/html/ig)
     .loadContent()
-    .modify(/哈/ig, "test")
+    .modify(/hehe/ig, "test1")
     
+
 use("weibo-custom-timeline")
 
