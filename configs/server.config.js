@@ -12,9 +12,10 @@
 //     .contenttype(/html/ig)
 //     .loadContent()
 //     .modify(/hehe/ig, "test1")
-    
-use("uniqlo")
 
-use("nikon")
-use("crisp")
-use("weibo-custom-timeline")
+use("pepsi") 
+// use("uniqlo")
+
+// use("nikon")
+// use("crisp")
+// use("weibo-custom-timeline")
