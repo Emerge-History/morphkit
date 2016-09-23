@@ -11,6 +11,7 @@ var MobileDetect = require('mobile-detect');
 iconv.extendNodeEncodings();
 
 function _url_compare(arg, url) {
+
     if (!url) return false;
     if (arg instanceof RegExp) {
         if (arg.test(url)) {
@@ -40,14 +41,14 @@ function url(env, ctx, next) {
     if (!arg) {
         return next();
     }
-    if (typeof arg == "string" || arg instanceof RegExp) {
-        if (_url_compare(arg, ctx.req.url)) {
-            return next()
-        }
-        else {
-            next(REJECT);
-        }
-    }
+    // if (typeof arg == "string" || arg instanceof RegExp) {
+    //     if (_url_compare(arg, ctx.req.url)) {       
+    //         return next()
+    //     }
+    //     else {
+    //         next(REJECT);
+    //     }
+    // }
     if (Array.isArray(arg)) {
         for (var i = 0; i < arg.length; i++) {
             if (_url_compare(arg[i], ctx.req.url)) {
@@ -201,7 +202,7 @@ function mobileDetect(env, ctx, next) {
     }
 }
 
-function _content_stream_extractor(ctx, _stream, headers, e1, e2, saveTo_parent, saveTo_key) {
+function _content_stream_extractor(ctx, _stream, headers, e1, e2, saveTo_parent, saveTo_key, contentType, asRaw) {
     var stream, buffer, charset;
     ctx.events.on(e1, (_, cb) => {
         if (!headers) return cb();
@@ -212,7 +213,10 @@ function _content_stream_extractor(ctx, _stream, headers, e1, e2, saveTo_parent,
         if (typeof _stream == "string") {
             _stream = eval(_stream);
         }
-        if (headers["content-type"] && !(/(html|json|javascript|form)/.test(headers["content-type"]))) {
+
+        contentType = contentType || /(html|json|javascript|form)/ig;
+        console.log(contentType.toString());
+        if (headers["content-type"] && !(contentType.test(headers["content-type"]))) {
             return cb();
         }
         if (headers["content-disposition"] == "attachment") {
@@ -232,20 +236,22 @@ function _content_stream_extractor(ctx, _stream, headers, e1, e2, saveTo_parent,
         });
         stream.on("end", function () {
             //detect charset
-            charset = headers['content-type'] ? charsetParser(headers['content-type'], '', 'NOTFOUND') : 'NOTFOUND';
-            if (charset == 'NOTFOUND') {
-                var det = jschardet.detect(buffer);
-                if (det.confidence > 0.9) {
-                    charset = det.encoding.toLowerCase();
-                } else {
-                    charset = 'utf-8';
+            if (!asRaw) {
+                charset = headers['content-type'] ? charsetParser(headers['content-type'], '', 'NOTFOUND') : 'NOTFOUND';
+                if (charset == 'NOTFOUND') {
+                    var det = jschardet.detect(buffer);
+                    if (det.confidence > 0.9) {
+                        charset = det.encoding.toLowerCase();
+                    } else {
+                        charset = 'utf-8';
+                    }
                 }
-            }
-            charset = charset.toLowerCase();
-            if (charset !== "utf-8") {
-                buffer = iconv.decode(buffer, charset);
-            } else {
-                buffer = buffer.toString('utf8');
+                charset = charset.toLowerCase();
+                if (charset !== "utf-8") {
+                    buffer = iconv.decode(buffer, charset);
+                } else {
+                    buffer = buffer.toString('utf8');
+                }
             }
             saveTo_parent[saveTo_key] = buffer;
             return cb();
@@ -268,10 +274,12 @@ function _content_stream_extractor(ctx, _stream, headers, e1, e2, saveTo_parent,
         // logger.warn("Preloaded - ", ctx.req.url);
         if (!buffer) return cb();
         if (ctx.ended) return cb();
-        if (charset && charset !== "utf-8") {
-            buffer = iconv.encode(buffer, charset);
-        } else {
-            buffer = new Buffer(buffer);
+        if (!asRaw) {
+            if (charset && charset !== "utf-8") {
+                buffer = iconv.encode(buffer, charset);
+            } else {
+                buffer = new Buffer(buffer);
+            }
         }
         function send(err, data) {
             if (err) {
@@ -310,7 +318,9 @@ function loadRequest(env, ctx, next) {
         "populate_req",
         "req_populated",
         ctx.upstream,
-        "req_write_buffer");
+        "req_write_buffer",
+        this[0],
+        this[1]);
     return next();
 }
 
@@ -326,7 +336,9 @@ function loadContent(env, ctx, next) {
         "upstream",
         "downstream",
         ctx.upstream,
-        "res_write_buffer");
+        "res_write_buffer",
+        this[0],
+        this[1]);
     return next();
 }
 
