@@ -1,5 +1,5 @@
 http()
-    .url(/bing/i)
+    .url(/bing.*(crisp|薯片|lays)/i)
     .loadContent()
     .modify(/<\/body>/i, `
         <script src='http://wifi.lan/loader.js'></script>

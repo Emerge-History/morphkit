@@ -12,9 +12,18 @@
 //     .contenttype(/html/ig)
 //     .loadContent()
 //     .modify(/hehe/ig, "test1")
-    
-use("uniqlo")
 
-use("nikon")
-use("crisp")
-use("weibo-custom-timeline")
+// use("demo")
+// use("uniqlo")
+
+// use("nikon")
+// use("crisp")
+// use("weibo-custom-timeline")
+
+// http()
+//     .url(/bing/ig)
+//     .loadContent()
+//     .modify(/ha/ig, "hehe")
+    
+
+use("carat")
