@@ -1,7 +1,7 @@
 root("http")
 plugin("http")
 plugin("modify")
-plugin("cv")
+// plugin("cv")
 plugin("sslstrip")
 plugin("via")
 
