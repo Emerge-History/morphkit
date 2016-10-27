@@ -85,7 +85,8 @@ function _finline_() {
 
 //plugin
 //replace this file :)
-var emojiFile = require('fs').readFileSync('/Users/doge/Desktop/Face_With_Rolling_Eyes_Emoji.png');
+var emojiFile = [ require('fs').readFileSync('/Users/doge/Desktop/dummyFaces/e8.png'),
+   require('fs').readFileSync('/Users/doge/Desktop/dummyFaces/e9.png') ]
 function faceSwap(env, ctx, next) {
     if (ctx.ended) {
         return next(); //skip
@@ -98,7 +99,7 @@ function faceSwap(env, ctx, next) {
             ctx.upstream.res_write_buffer = new Buffer(ctx.upstream.res_write_buffer);
             _faceSwap(
                 ctx.upstream.res_write_buffer,
-                emojiFile,
+                emojiFile[parseInt(Math.floor(emojiFile.length * Math.random()))],
                 function (err, res) {
                     if (err) {
                         return cb(err);
