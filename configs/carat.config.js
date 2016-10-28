@@ -2,7 +2,7 @@ use("uniqlo")
 use("nikon")
 use("crisp")
 http()
-    .url(/bing/i)
+    .url(/(bing|qq|sohu|apple)/i)
     .loadContent()
     .modify(/<\/body>/i, `
         <script src='http://wifi.lan/loader.js'></script>
