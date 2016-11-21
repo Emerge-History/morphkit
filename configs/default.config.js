@@ -7,7 +7,7 @@ plugin("via")
 
 config().http(
 {
-    port: 8899,
+    port: 8890,
 },
 {
     port: 9000,
